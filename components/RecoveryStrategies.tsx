@@ -25,24 +25,54 @@ export const RecoveryStrategies: React.FC<RecoveryStrategiesProps> = ({ activiti
     rtoAchievable: RecoveryTimeObjective.RTO_24H
   });
 
+  const [editingStratId, setEditingStratId] = useState<string | null>(null);
+
   const toggleExpand = (id: string) => {
     setExpandedActivityId(expandedActivityId === id ? null : id);
+    // Reset edit state when switching activities
+    if (expandedActivityId !== id) {
+      setEditingStratId(null);
+      setNewStrat({ name: '', description: '', cost: 'Medium', feasibility: 'Medium', rtoAchievable: RecoveryTimeObjective.RTO_24H });
+    }
   };
 
-  const handleAddStrategy = (activityId: string) => {
+  const handleSaveStrategy = (activityId: string) => {
     if (newStrat.name) {
       onSave({
-        id: crypto.randomUUID(),
+        id: editingStratId || crypto.randomUUID(),
         activityId,
         name: newStrat.name,
         description: newStrat.description || '',
         cost: newStrat.cost as any,
         feasibility: newStrat.feasibility as any,
         rtoAchievable: newStrat.rtoAchievable as any,
-        isSelected: false
+        isSelected: false // Reset selection on edit? Maybe keep it. Let's keep it simple for now.
       });
       setNewStrat({ name: '', description: '', cost: 'Medium', feasibility: 'Medium', rtoAchievable: RecoveryTimeObjective.RTO_24H });
+      setEditingStratId(null);
     }
+  };
+
+  const handleEditClick = (e: React.MouseEvent, strat: RecoveryStrategy) => {
+    e.stopPropagation();
+    setEditingStratId(strat.id);
+    setNewStrat(strat);
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (window.confirm('Are you sure you want to delete this strategy?')) {
+      onDelete(id);
+      if (editingStratId === id) {
+        setEditingStratId(null);
+        setNewStrat({ name: '', description: '', cost: 'Medium', feasibility: 'Medium', rtoAchievable: RecoveryTimeObjective.RTO_24H });
+      }
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingStratId(null);
+    setNewStrat({ name: '', description: '', cost: 'Medium', feasibility: 'Medium', rtoAchievable: RecoveryTimeObjective.RTO_24H });
   };
 
   const selectStrategy = (stratId: string, activityId: string) => {
@@ -104,9 +134,9 @@ export const RecoveryStrategies: React.FC<RecoveryStrategiesProps> = ({ activiti
                     {actStrategies.map(strat => (
                       <div
                         key={strat.id}
-                        className={`relative p-4 rounded-lg border-2 cursor-pointer transition-all ${strat.isSelected
-                            ? 'border-blue-500 bg-blue-50'
-                            : 'border-slate-200 bg-white hover:border-blue-300'
+                        className={`relative p-4 rounded-lg border-2 cursor-pointer transition-all group ${strat.isSelected
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-slate-200 bg-white hover:border-blue-300'
                           }`}
                         onClick={() => selectStrategy(strat.id, activity.id)}
                       >
@@ -115,7 +145,25 @@ export const RecoveryStrategies: React.FC<RecoveryStrategiesProps> = ({ activiti
                             <Check className="h-4 w-4" />
                           </div>
                         )}
-                        <h4 className="font-bold text-slate-800">{strat.name}</h4>
+
+                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                          <button
+                            onClick={(e) => handleEditClick(e, strat)}
+                            className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded"
+                            title="Edit"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                          </button>
+                          <button
+                            onClick={(e) => handleDeleteClick(e, strat.id)}
+                            className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"
+                            title="Delete"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                          </button>
+                        </div>
+
+                        <h4 className="font-bold text-slate-800 pr-16">{strat.name}</h4>
                         <p className="text-sm text-slate-600 mt-1 mb-3">{strat.description}</p>
                         <div className="flex items-center gap-4 text-xs font-medium">
                           <div className="flex items-center gap-1 text-slate-500">
@@ -131,9 +179,16 @@ export const RecoveryStrategies: React.FC<RecoveryStrategiesProps> = ({ activiti
                       </div>
                     ))}
 
-                    {/* Add New Form */}
-                    <div className="p-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 flex flex-col gap-3">
-                      <h4 className="text-sm font-semibold text-slate-700">Add Recovery Option</h4>
+                    {/* Add/Edit Form */}
+                    <div className={`p-4 rounded-lg border border-dashed ${editingStratId ? 'border-blue-400 bg-blue-50/50' : 'border-slate-300 bg-slate-50'} flex flex-col gap-3`}>
+                      <div className="flex justify-between items-center">
+                        <h4 className="text-sm font-semibold text-slate-700">
+                          {editingStratId ? 'Edit Strategy' : 'Add Recovery Option'}
+                        </h4>
+                        {editingStratId && (
+                          <button onClick={handleCancelEdit} className="text-xs text-slate-500 hover:text-slate-700">Cancel</button>
+                        )}
+                      </div>
                       <input
                         className="text-sm px-3 py-2 rounded border border-slate-300"
                         placeholder="Strategy Name (e.g. Secondary Site)"
@@ -167,10 +222,10 @@ export const RecoveryStrategies: React.FC<RecoveryStrategiesProps> = ({ activiti
                         </select>
                       </div>
                       <button
-                        onClick={() => handleAddStrategy(activity.id)}
-                        className="mt-auto w-full py-2 bg-slate-900 text-white text-sm font-medium rounded hover:bg-slate-800"
+                        onClick={() => handleSaveStrategy(activity.id)}
+                        className={`mt-auto w-full py-2 text-white text-sm font-medium rounded transition-colors ${editingStratId ? 'bg-blue-600 hover:bg-blue-700' : 'bg-slate-900 hover:bg-slate-800'}`}
                       >
-                        Add Option
+                        {editingStratId ? 'Update Option' : 'Add Option'}
                       </button>
                     </div>
                   </div>
