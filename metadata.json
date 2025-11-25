@@ -1,0 +1,5 @@
+{
+  "name": "ISO 22301 BIA Manager",
+  "description": "A professional Business Impact Assessment tool compliant with ISO 22301 standards. Features AI-assisted impact analysis, resource dependency mapping, and RTO/RPO calculation.",
+  "requestFramePermissions": []
+}
